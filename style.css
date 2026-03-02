@@ -160,8 +160,8 @@ body {
     gap: 1.5rem;
     position: relative;
     overflow: hidden;
-    backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     transform: translateY(0);
 }

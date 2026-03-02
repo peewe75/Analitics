@@ -1,0 +1,7 @@
+{
+    "name": "softi-analyze-root",
+    "private": true,
+    "scripts": {
+        "build": "npm run build --prefix web-lite && npm run build --prefix admin-web && rm -rf dist && mkdir dist && cp index.html style.css dist/ && cp -r web-lite/dist dist/web-lite && cp -r admin-web/dist dist/admin-web"
+    }
+}
