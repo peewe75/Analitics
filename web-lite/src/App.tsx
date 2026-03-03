@@ -31,7 +31,7 @@ export default function App() {
     const MOCK_USER_ID = "user_12345";
 
     useEffect(() => {
-        fetch(`${API_BASE}/auth/consent/status?user_id=${MOCK_USER_ID}`)
+        fetch(`${API_BASE}/consent/status?user_id=${MOCK_USER_ID}`)
             .then(r => r.json())
             .then(data => {
                 if (data.status === 'ACTIVE') setHasConsent(true);
@@ -83,7 +83,7 @@ export default function App() {
     };
 
     const handleAcceptConsent = () => {
-        fetch(`${API_BASE}/auth/consent/acknowledge`, {
+        fetch(`${API_BASE}/consent/acknowledge`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: MOCK_USER_ID, version: "1.0" })

@@ -125,7 +125,7 @@ class PaymentType(str, enum.Enum):
 
 class Payment(Base):
     __tablename__ = "payments"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, index=True)
     subscription_id = Column(Integer, ForeignKey("subscriptions.id"))
     method = Column(String) # IBAN, USDT, STRIPE
     amount = Column(Float)
@@ -157,7 +157,7 @@ class Commission(Base):
     __tablename__ = "commissions"
     id = Column(Integer, primary_key=True, index=True)
     affiliate_id = Column(Integer, ForeignKey("affiliates.id"))
-    payment_id = Column(Integer, ForeignKey("payments.id"))
+    payment_id = Column(String, ForeignKey("payments.id"))
     amount = Column(Float)
     commission_type = Column(String) # INITIAL, RENEWAL, REACTIVATION
     status = Column(String, default="PENDING") # PENDING, APPROVABLE, PAID

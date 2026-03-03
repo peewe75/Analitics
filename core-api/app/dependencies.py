@@ -1,7 +1,9 @@
-from fastapi import Depends, HTTPException, status, Header, Request
+from fastapi import Depends, HTTPException, status, Header, Request, Security
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.database import get_db
 import app.models as models
+from app.auth.clerk import get_clerk_user, security
 import os
 
 DEFAULT_TENANT_ID = os.getenv("DEFAULT_TENANT_ID", "softi")
@@ -53,23 +55,49 @@ def get_tenant_by_api_key(
     # Placeholder implementation:
     raise HTTPException(status_code=501, detail="API Key auth not fully implemented yet")
 
-def get_current_user(
-    authorization: str = Header(None),
+async def get_current_user(
+    clerk_payload: dict = Depends(get_clerk_user),
     db: Session = Depends(get_db)
 ) -> models.User:
-    """ Validates Clerk JWT or custom auth """
-    if not authorization:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    # TODO: Verify Clerk Token
+    """ Validates Clerk JWT and returns the user from DB """
+    email = clerk_payload.get("email") or clerk_payload.get("emails", [None])[0] # Clerk payload varies
+    clerk_id = clerk_payload.get("sub")
     
-    # Placeholder mock user retrieval
-    user = db.query(models.User).first()
+    if not clerk_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Clerk token")
+
+    user = db.query(models.User).filter(models.User.id == clerk_id).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        # Auto-create user if it doesn't exist? Or just return unauthorized.
+        # For now, we expect the user to exist or we fail.
+        # Integration might require a sync step.
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not synchronized with database")
         
     return user
 
-def require_consent(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def get_current_admin(
+    clerk_payload: dict = Depends(get_clerk_user),
+    db: Session = Depends(get_db)
+) -> models.AdminUser:
+    """ Validates Clerk JWT and checks if user is an admin by email """
+    # Get email from Clerk payload. Clerk typically puts it in 'emails' or 'primary_email_address' 
+    # but in a JWT it's often in a custom claim or 'email'
+    email = clerk_payload.get("email")
+    
+    if not email:
+        # Try finding email in different common Clerk claims
+        email = clerk_payload.get("email_address")
+        
+    if not email:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email not found in Clerk token")
+
+    admin = db.query(models.AdminUser).filter(models.AdminUser.email == email, models.AdminUser.is_active == True).first()
+    if not admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: Not an administrator")
+        
+    return admin
+
+async def require_consent(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     consent = db.query(models.Consent).filter(
         models.Consent.user_id == current_user.id,
         models.Consent.status == "ACTIVE"

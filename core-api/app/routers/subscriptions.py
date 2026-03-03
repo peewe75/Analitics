@@ -10,10 +10,10 @@ router = APIRouter(prefix="/api/v1/subscriptions", tags=["subscriptions"])
 @router.get("/me")
 def get_my_subscription(
     db: Session = Depends(get_db),
-    user=Depends(get_current_user)
+    user: models.User = Depends(get_current_user)
 ):
     """ Get the current user's subscription status. """
-    sub = subscriptions.get_subscription(db, user["user_id"])
+    sub = subscriptions.get_subscription(db, user.id)
     return {
         "status": "success",
         "data": {
@@ -29,13 +29,13 @@ def get_my_subscription(
 def request_pro(
     payload: Dict[str, str], # {"plan_type": "PRO_MONTHLY|PRO_YEARLY"}
     db: Session = Depends(get_db),
-    user=Depends(get_current_user)
+    user: models.User = Depends(get_current_user)
 ):
     """ Initiate a request to upgrade to a PRO plan. """
     plan_type = payload.get("plan_type")
     
     try:
-        sub = subscriptions.request_pro_plan(db, user["user_id"], plan_type)
+        sub = subscriptions.request_pro_plan(db, user.id, plan_type)
         return {"status": "success", "message": f"Requested upgrade to {plan_type}", "subscription_id": sub.id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

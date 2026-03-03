@@ -43,7 +43,7 @@ def submit_payment(db: Session, user_id: str, method: str, amount: float, tx_ref
     db.refresh(payment)
     return payment
 
-def verify_payment(db: Session, payment_id: int, admin_user_id: int) -> models.Payment:
+def verify_payment(db: Session, payment_id: str, admin_user_id: int) -> models.Payment:
     payment = db.query(models.Payment).filter(models.Payment.id == payment_id).first()
     if not payment:
         raise ValueError("Payment not found.")
@@ -75,7 +75,7 @@ def verify_payment(db: Session, payment_id: int, admin_user_id: int) -> models.P
     
     return payment
 
-def reject_payment(db: Session, payment_id: int, admin_user_id: int, reason: str) -> models.Payment:
+def reject_payment(db: Session, payment_id: str, admin_user_id: int, reason: str) -> models.Payment:
     payment = db.query(models.Payment).filter(models.Payment.id == payment_id).first()
     if not payment:
         raise ValueError("Payment not found.")

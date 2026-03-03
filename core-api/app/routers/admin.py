@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.database import get_db
+from app.dependencies import get_db, get_current_admin
 import app.models as models
 from typing import List
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin-management"])
 
 @router.get("/users")
-def list_users(db: Session = Depends(get_db)):
+def list_users(db: Session = Depends(get_db), current_admin: models.AdminUser = Depends(get_current_admin)):
     """ List all users with their subscription plans """
     users = db.query(models.User).all()
     results = []
@@ -25,7 +25,7 @@ def list_users(db: Session = Depends(get_db)):
     return results
 
 @router.get("/payments/pending")
-def list_pending_payments(db: Session = Depends(get_db)):
+def list_pending_payments(db: Session = Depends(get_db), current_admin: models.AdminUser = Depends(get_current_admin)):
     """ List all payments waiting for admin approval """
     payments = db.query(models.Payment).filter(models.Payment.status == "PENDING").all()
     results = []
@@ -42,7 +42,7 @@ def list_pending_payments(db: Session = Depends(get_db)):
     return results
 
 @router.get("/stats")
-def get_admin_stats(db: Session = Depends(get_db)):
+def get_admin_stats(db: Session = Depends(get_db), current_admin: models.AdminUser = Depends(get_current_admin)):
     """ Quick stats for the dashboard """
     total_users = db.query(models.User).count()
     pro_users = db.query(models.Subscription).filter(models.Subscription.plan != "LITE", models.Subscription.status == "ACTIVE").count()

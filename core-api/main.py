@@ -3,10 +3,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
 import app.models as models
-from app.routers import auth, analyze, subscriptions, payments, affiliates, admin
+from app.routers import auth, analyze, subscriptions, payments, affiliates, admin, webhooks
 
 # Create all tables in the database (For dev only! Use Alembic for prod)
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)  # Commented out to prevent conflict with Alembic
 
 app = FastAPI(
     title="Softi Analyze API",
@@ -22,6 +22,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+app.include_router(webhooks.router)
 app.include_router(auth.router)
 app.include_router(auth.consent_router)
 app.include_router(analyze.router)
