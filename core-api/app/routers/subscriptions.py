@@ -4,6 +4,7 @@ from app.database import get_db
 from app.dependencies import get_current_user, require_consent
 from app.services import subscriptions
 from typing import Dict, Any
+import app.models as models
 
 router = APIRouter(prefix="/api/v1/subscriptions", tags=["subscriptions"])
 
