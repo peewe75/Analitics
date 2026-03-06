@@ -18,8 +18,7 @@ export default function App() {
     const { getToken } = useAuth();
 
     const [activeTab, setActiveTab] = useState<Tab>('analysis');
-    const [hasConsent, setHasConsent] = useState<boolean>(false);
-    const [loading, setLoading] = useState<boolean>(true);
+    const [showConsent, setShowConsent] = useState<boolean>(false);
     const [analyzing, setAnalyzing] = useState<boolean>(false);
     const [selectedAsset, setSelectedAsset] = useState<string>('XAUUSD');
     const [analysisResult, setAnalysisResult] = useState<any>(null);
@@ -30,6 +29,16 @@ export default function App() {
     const [isAffiliate, setIsAffiliate] = useState<boolean>(false);
     const [affloading, setAffLoading] = useState<boolean>(false);
     const [affStats, setAffStats] = useState<any>(null);
+
+    // Check consent on mount (localStorage)
+    useEffect(() => {
+        if (isSignedIn && user) {
+            const consentKey = `softi_consent_${user.id}`;
+            if (!localStorage.getItem(consentKey)) {
+                setShowConsent(true);
+            }
+        }
+    }, [isSignedIn, user]);
 
     // Helper function to make authenticated API calls
     const authFetch = async (url: string, options: RequestInit = {}) => {
@@ -43,26 +52,11 @@ export default function App() {
         });
     };
 
-    // Check consent status after user is signed in
     useEffect(() => {
-        if (!isSignedIn || !user) {
-            setLoading(false);
-            return;
-        }
-        authFetch(`${API_BASE}/consent/status`)
-            .then(r => r.json())
-            .then(data => {
-                if (data.has_consent) setHasConsent(true);
-                setLoading(false);
-            })
-            .catch(() => setLoading(false));
-    }, [isSignedIn, user]);
-
-    useEffect(() => {
-        if (hasConsent && activeTab === 'affiliates') {
+        if (isSignedIn && activeTab === 'affiliates') {
             fetchAffiliateData();
         }
-    }, [hasConsent, activeTab]);
+    }, [isSignedIn, activeTab]);
 
     const fetchAffiliateData = () => {
         setAffLoading(true);
@@ -99,15 +93,18 @@ export default function App() {
     };
 
     const handleAcceptConsent = () => {
+        if (user) {
+            const consentKey = `softi_consent_${user.id}`;
+            localStorage.setItem(consentKey, 'accepted');
+        }
+        setShowConsent(false);
+
+        // Also try to save to backend (fire-and-forget)
         authFetch(`${API_BASE}/consent/acknowledge`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ version: "1.0" })
-        })
-            .then(r => r.json())
-            .then(data => {
-                if (data.message) setHasConsent(true);
-            });
+        }).catch(() => { }); // Silently fail if backend is unreachable
     };
 
     const runAnalysis = () => {
@@ -173,33 +170,7 @@ export default function App() {
         );
     }
 
-    // 3. Loading consent status
-    if (loading) return null;
-
-    // 4. Signed in but no consent → show Avviso Legale
-    if (!hasConsent) {
-        return (
-            <div className="app-shell">
-                <header className="nav-lite">
-                    <div className="logo">SOFTI<span>ANALYZE</span></div>
-                    <UserButton afterSignOutUrl="/" />
-                </header>
-                <div className="consent-wrapper">
-                    <div className="glass-panel consent-card">
-                        <h2>Avviso Legale</h2>
-                        <div className="consent-text">
-                            <p>Benvenuto in Softi Analyze. Proseguendo, dichiari di aver compreso che questa piattaforma fornisce esclusivamente <strong>analisi tecniche deterministiche</strong> a scopo educativo.</p>
-                            <br />
-                            <p>Non siamo consulenti finanziari. Nessun dato mostrato deve essere interpretato come un segnale di acquisto o vendita. Il trading comporta rischi elevati per il tuo capitale.</p>
-                        </div>
-                        <button className="btn-premium" onClick={handleAcceptConsent}>ACCETTO E PROSEGUO</button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // 5. Signed in + consent → main app
+    // 3. Signed in → show dashboard (with consent popup overlay if needed)
     return (
         <div className="app-shell">
             <header className="nav-lite">
@@ -211,6 +182,22 @@ export default function App() {
                     <UserButton afterSignOutUrl="/" />
                 </div>
             </header>
+
+            {/* === CONSENT POPUP OVERLAY === */}
+            {showConsent && (
+                <div className="consent-overlay" onClick={(e) => e.stopPropagation()}>
+                    <div className="consent-popup glass-panel">
+                        <div className="consent-popup-icon">⚖️</div>
+                        <h2>Avviso Legale</h2>
+                        <div className="consent-text">
+                            <p>Benvenuto in Softi Analyze. Proseguendo, dichiari di aver compreso che questa piattaforma fornisce esclusivamente <strong>analisi tecniche deterministiche</strong> a scopo educativo.</p>
+                            <br />
+                            <p>Non siamo consulenti finanziari. Nessun dato mostrato deve essere interpretato come un segnale di acquisto o vendita. Il trading comporta rischi elevati per il tuo capitale.</p>
+                        </div>
+                        <button className="btn-premium" onClick={handleAcceptConsent}>ACCETTO E PROSEGUO</button>
+                    </div>
+                </div>
+            )}
 
             <div className="container fade-in-up">
                 <nav className="nav-tabs">
@@ -264,16 +251,12 @@ export default function App() {
                                                 <span className="pro-icon">✦</span>
                                                 <h2 className="pro-title">PRO Analysis Insights</h2>
                                             </div>
-
                                             {analysisResult.narrative && (
                                                 <div className="section-narrative">
                                                     <h3 className="narrative-header">AI Market Narrative</h3>
-                                                    <div className="ai-narrative-text">
-                                                        {analysisResult.narrative}
-                                                    </div>
+                                                    <div className="ai-narrative-text">{analysisResult.narrative}</div>
                                                 </div>
                                             )}
-
                                             {analysisResult.pro_data && (
                                                 <div className="results-grid pro-data-grid">
                                                     <div>
@@ -282,21 +265,13 @@ export default function App() {
                                                             <div className="ob-list">
                                                                 {analysisResult.pro_data.order_blocks.map((ob: any, i: number) => (
                                                                     <div key={i} className={`ob-item ob-${ob.type.toLowerCase()}`}>
-                                                                        <div>
-                                                                            <span className="ob-label">{ob.type} OB</span>
-                                                                            <span className="ob-tf">{ob.timeframe}</span>
-                                                                        </div>
-                                                                        <div className="ob-price">
-                                                                            {ob.price_range[0]} - {ob.price_range[1]}
-                                                                        </div>
+                                                                        <div><span className="ob-label">{ob.type} OB</span><span className="ob-tf">{ob.timeframe}</span></div>
+                                                                        <div className="ob-price">{ob.price_range[0]} - {ob.price_range[1]}</div>
                                                                     </div>
                                                                 ))}
                                                             </div>
-                                                        ) : (
-                                                            <p className="empty-msg">No specific order blocks detected currently.</p>
-                                                        )}
+                                                        ) : (<p className="empty-msg">No specific order blocks detected currently.</p>)}
                                                     </div>
-
                                                     <div>
                                                         <h3 className="pro-section-title">Fair Value Gaps (FVG)</h3>
                                                         {analysisResult.pro_data.fair_value_gaps && analysisResult.pro_data.fair_value_gaps.length > 0 ? (
@@ -308,9 +283,7 @@ export default function App() {
                                                                     </div>
                                                                 ))}
                                                             </div>
-                                                        ) : (
-                                                            <p className="empty-msg">Market is balanced, no notable FVGs found.</p>
-                                                        )}
+                                                        ) : (<p className="empty-msg">Market is balanced, no notable FVGs found.</p>)}
                                                     </div>
                                                 </div>
                                             )}
@@ -351,14 +324,7 @@ export default function App() {
                                     <div className="iban-box">IT88 X 01234 12345 000000123456<br />USDT (TRC20): TX_ADDRESS_MOCK</div>
                                     <div className="form-group">
                                         <label htmlFor="tx-ref">TX Reference</label>
-                                        <input
-                                            id="tx-ref"
-                                            type="text"
-                                            className="form-input"
-                                            placeholder="Inserisci l'ID della transazione"
-                                            value={txRef}
-                                            onChange={(e) => setTxRef(e.target.value)}
-                                        />
+                                        <input id="tx-ref" type="text" className="form-input" placeholder="Inserisci l'ID della transazione" value={txRef} onChange={(e) => setTxRef(e.target.value)} />
                                     </div>
                                     <button className="btn-premium btn-full" onClick={() => submitPayment('Manual')}>CONFERMA</button>
                                 </>
@@ -371,54 +337,29 @@ export default function App() {
                     <div className="view-affiliates">
                         <h1>Affiliate Portal</h1>
                         <p className="text-dim">Guadagna commissioni ricorrenti promuovendo le analisi deterministiche.</p>
-
                         {affloading ? (
-                            <div className="loader-container aff-loader">
-                                <div className="loader"></div>
-                                <div className="loading-text">CARICAMENTO DATI AFFILIATO...</div>
-                            </div>
+                            <div className="loader-container aff-loader"><div className="loader"></div><div className="loading-text">CARICAMENTO DATI AFFILIATO...</div></div>
                         ) : !isAffiliate ? (
                             <div className="glass-panel aff-join-card">
                                 <h2 className="aff-join-title">Diventa un Partner</h2>
-                                <p className="text-dim aff-join-desc">
-                                    Unisciti al nostro programma e ottieni il <strong>30% di commissione</strong> su ogni utente PRO che porti in Softi Analyze. Pagamenti mensili automatici.
-                                </p>
+                                <p className="text-dim aff-join-desc">Unisciti al nostro programma e ottieni il <strong>30% di commissione</strong> su ogni utente PRO che porti in Softi Analyze. Pagamenti mensili automatici.</p>
                                 <button className="btn-premium btn-join" onClick={joinAffiliateProgram}>ATTIVA ACCOUNT AFFILIATO</button>
                             </div>
                         ) : affStats && (
                             <>
                                 <div className="affiliate-stats">
-                                    <div className="glass-panel aff-stat-card">
-                                        <div className="aff-stat-label">Referrals</div>
-                                        <div className="aff-stat-value">{affStats.total_referrals}</div>
-                                    </div>
-                                    <div className="glass-panel aff-stat-card">
-                                        <div className="aff-stat-label">Commissions Earned</div>
-                                        <div className="aff-stat-value">€{affStats.total_earned.toFixed(2)}</div>
-                                    </div>
-                                    <div className="glass-panel aff-stat-card">
-                                        <div className="aff-stat-label">Pending Payout</div>
-                                        <div className="aff-stat-value stat-pending">€{affStats.total_pending.toFixed(2)}</div>
-                                    </div>
+                                    <div className="glass-panel aff-stat-card"><div className="aff-stat-label">Referrals</div><div className="aff-stat-value">{affStats.total_referrals}</div></div>
+                                    <div className="glass-panel aff-stat-card"><div className="aff-stat-label">Commissions Earned</div><div className="aff-stat-value">€{affStats.total_earned.toFixed(2)}</div></div>
+                                    <div className="glass-panel aff-stat-card"><div className="aff-stat-label">Pending Payout</div><div className="aff-stat-value stat-pending">€{affStats.total_pending.toFixed(2)}</div></div>
                                 </div>
-
                                 <div className="glass-panel aff-link-box">
                                     <h3 className="box-title">Il tuo Affiliate Link</h3>
                                     <p className="text-dim box-desc">Condividi questo link per ottenere il 30% di commissione su ogni abbonamento PRO.</p>
                                     <div className="aff-link-container">
-                                        <input
-                                            id="aff-link-input"
-                                            type="text"
-                                            className="aff-link-input"
-                                            readOnly
-                                            value={`https://softianalyze.it/ref/${affStats.ref_code}`}
-                                            aria-label="Your affiliate link"
-                                            placeholder="Affiliate Link"
-                                        />
+                                        <input id="aff-link-input" type="text" className="aff-link-input" readOnly value={`https://softianalyze.it/ref/${affStats.ref_code}`} aria-label="Your affiliate link" placeholder="Affiliate Link" />
                                         <button className="btn-premium btn-copy" onClick={copyLink}>COPIA</button>
                                     </div>
                                 </div>
-
                                 <div className="glass-panel referrals-container">
                                     <h3 className="referrals-title">Referral Recenti</h3>
                                     <p className="text-dim referrals-empty">I dettagli dei singoli referral saranno disponibili a breve.</p>
