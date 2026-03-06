@@ -68,10 +68,15 @@ async def get_current_user(
 
     user = db.query(models.User).filter(models.User.id == clerk_id).first()
     if not user:
-        # Auto-create user if it doesn't exist? Or just return unauthorized.
-        # For now, we expect the user to exist or we fail.
-        # Integration might require a sync step.
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not synchronized with database")
+        # Auto-create user on first login from Clerk
+        user = models.User(
+            id=clerk_id,
+            email=email or f"{clerk_id}@clerk.user",
+            tenant_id=DEFAULT_TENANT_ID,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
         
     return user
 
