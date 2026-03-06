@@ -4,7 +4,7 @@ from app.database import get_db
 import app.models as models
 from app.dependencies import require_consent
 
-router = APIRouter(prefix="/v1", tags=["analyze"])
+router = APIRouter(prefix="", tags=["analyze"])
 
 @router.get("/assets")
 def get_assets():

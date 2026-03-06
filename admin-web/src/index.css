@@ -563,6 +563,18 @@ button {
     box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
 }
 
+.btn-danger {
+    background-color: #ef4444;
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+}
+
 .btn-secondary {
     background-color: var(--bg-surface);
     color: var(--text-primary);

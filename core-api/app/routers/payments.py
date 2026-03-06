@@ -6,7 +6,7 @@ from app.services import payments
 from typing import Dict, Any
 import app.models as models
 
-router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
+router = APIRouter(prefix="/payments", tags=["payments"])
 
 @router.post("/submit")
 def submit_payment_proof(

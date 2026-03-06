@@ -6,7 +6,7 @@ from app.services import subscriptions
 from typing import Dict, Any
 import app.models as models
 
-router = APIRouter(prefix="/api/v1/subscriptions", tags=["subscriptions"])
+router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
 @router.get("/me")
 def get_my_subscription(

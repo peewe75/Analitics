@@ -6,7 +6,7 @@ from app.services import affiliates
 from app.models import Affiliate, Referral, Commission
 from typing import Dict, Any
 
-router = APIRouter(prefix="/api/v1/affiliates", tags=["affiliates"])
+router = APIRouter(prefix="/affiliates", tags=["affiliates"])
 
 @router.post("/join")
 def join_affiliate_program(
